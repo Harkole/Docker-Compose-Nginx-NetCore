@@ -1,0 +1,27 @@
+# Configure the run time environment
+FROM mcr.microsoft.com/dotnet/core/aspnet:2.2 AS base
+WORKDIR /app
+
+# Configure the build process
+FROM microsoft/dotnet:2.2-sdk AS build
+WORKDIR /src
+COPY . .
+
+# Trigger the restore/build of the project
+RUN dotnet build "app.csproj" -c Release -o /app
+
+# With the build completed, publish the application
+FROM build AS publish
+RUN dotnet publish "app.csproj" -c Release -o /app
+
+# Now execute the worker using dotnet runtimes
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app .
+
+# Configure Kestral Envrionment
+ENV ASPNETCORE_URLS http://+:5000
+EXPOSE 5000
+
+# Execute program
+ENTRYPOINT ["dotnet", "app.dll"]
